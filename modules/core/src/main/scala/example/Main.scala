@@ -1,6 +1,6 @@
 package example
 
-import io.opentelemetry.api.OpenTelemetry
+import io.opentelemetry.api.{GlobalOpenTelemetry, OpenTelemetry}
 import io.opentelemetry.api.trace.{Span, Tracer, TracerProvider}
 import io.opentelemetry.context.{Context, ContextStorage}
 import io.opentelemetry.context.propagation.ContextPropagators
@@ -46,6 +46,14 @@ object Main {
       }))
       .build()
 
+    val openTelemetry = new OpenTelemetry {
+      override def getTracerProvider: TracerProvider = traceProvider
+
+      override def getPropagators: ContextPropagators =
+        io.opentelemetry.context.propagation.ContextPropagators
+          .noop() // Can add other context propagator
+    }
+    GlobalOpenTelemetry.set(openTelemetry)
     val tracer = traceProvider.get("mytracer")
 
     go(tracer, 1, () => go(tracer, 6))

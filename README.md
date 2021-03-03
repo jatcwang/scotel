@@ -1,3 +1,1 @@
-# Scala starter
-
-Quick starter project for scala
+# Scotel - Scala OpenTelemetry bindings
