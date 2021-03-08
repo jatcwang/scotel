@@ -15,25 +15,21 @@ import io.opentelemetry.javaagent.instrumentation.akkahttp.AkkaHttpServerInstrum
 
 import scala.jdk.CollectionConverters._
 import java.lang
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
 object RouteWrapper {
 
-  def withSpan(
+  def tracedRoute(
     tracer: Tracer,
     ec: ExecutionContext,
     actorSystem: ActorSystem,
   )(
     innerRoute: Route,
-  ): Flow[HttpRequest, HttpResponse, NotUsed] = {
-    // Don't be scared by mapAsync's parallelism = 1 since this flow is per HttpRequest
-    // Impl based on akka.http.scaladsl.server.Route.toFlow
-    Flow[HttpRequest].mapAsync(1)(
-      new AkkaHttpServerInstrumentationModule.AsyncWrapper(
-        Route.toFunction(innerRoute)(actorSystem),
-        actorSystem.getDispatcher,
-      ),
+  ): HttpRequest => Future[HttpResponse] = {
+    new AkkaHttpServerInstrumentationModule.AsyncWrapper(
+      Route.toFunction(innerRoute)(actorSystem),
+      actorSystem.getDispatcher,
     )
 
   }
