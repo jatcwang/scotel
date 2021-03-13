@@ -3,25 +3,28 @@ package scotel.testutils
 import io.opentelemetry.sdk.common.CompletableResultCode
 import io.opentelemetry.sdk.trace.`export`.SpanExporter
 import io.opentelemetry.sdk.trace.data.SpanData
-import scala.collection.mutable
 
+import scala.collection.mutable
 import java.util
+import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import scala.jdk.CollectionConverters._
 
 /**
   * InMemorySpanExporter
   */
 class InMemorySpanExporter extends SpanExporter {
-  private val collectedSpans = mutable.ArrayBuffer.empty[SpanData]
+  private val collectedSpans = new AtomicReference(Vector.empty[SpanData])
 
-  def getSpanData: Vector[SpanData] = collectedSpans.toVector
-  def reset(): Unit = collectedSpans.clear()
+  def spans: Vector[SpanData] = collectedSpans.get()
+  def reset(): Unit = {
+    collectedSpans.set(Vector.empty[SpanData])
+  }
 
   override def `export`(
     spans: util.Collection[SpanData],
   ): CompletableResultCode = {
-    spans.forEach { s =>
-      collectedSpans += s
-    }
+    val sps = spans.asScala
+    collectedSpans.updateAndGet(v => v ++ sps)
     CompletableResultCode.ofSuccess()
   }
 

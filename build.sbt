@@ -36,11 +36,15 @@ lazy val akkaHttp =
         "com.typesafe.akka" %% "akka-stream" % "2.6.13",
         // Only pulled in to use the functions
         "io.opentelemetry.javaagent" % "opentelemetry-javaagent-tooling" % openTelemetryInstrumentationVersion,
-        "io.opentelemetry.javaagent.instrumentation" % "opentelemetry-javaagent-akka-http-10.0" % openTelemetryInstrumentationVersion,
+//        "io.opentelemetry.instrumentation" % "opentelemetry-instrumentation-api" % openTelemetryInstrumentationVersion,
+        // FIXME: delme
+        "io.opentelemetry.javaagent.instrumentation" % "opentelemetry-javaagent-akka-http-10.0" % "1.1.0-alpha-SNAPSHOT",
         // Test deps
-        "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
-        "org.scalatest" %% "scalatest-wordspec" % "3.2.3" % Test,
+//        "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion % Test,
+//        "org.scalatest" %% "scalatest-wordspec" % "3.2.3" % Test,
       ),
+      // FIXME: delme
+      resolvers += Resolver.mavenLocal,
     )
 
 lazy val commonSettings = Seq(

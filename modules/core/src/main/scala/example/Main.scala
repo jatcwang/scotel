@@ -13,83 +13,18 @@ import io.opentelemetry.sdk.trace.export.SpanExporter
 
 import scala.jdk.CollectionConverters._
 import java.util
+import scala.util.Random
 
 // FIXME: helper method for batch span processor
 object Main {
 
   // FIXME: delme
   def main(args: Array[String]): Unit = {
-    println("Hello com.example.Empty Project!")
-
     implicit val ctx = new ContextExecutionContext(ExecutionContext.global)
 
-    val traceProvider = SdkTracerProvider
-      .builder()
-      .addSpanProcessor(SimpleSpanProcessor.create(new SpanExporter {
-        override def `export`(
-          spans: util.Collection[SpanData],
-        ): CompletableResultCode = {
-          spans.asScala.foreach { s =>
-            println(
-              s"Reporting ${s.getTraceId}  ${s.getSpanId} attr: ${s.getAttributes}  Parent: ${s.getParentSpanId}",
-            )
-          }
-          CompletableResultCode.ofSuccess()
-        }
+//    GlobalOpenTelemetry.set(openTelemetry)
+//    val tracer = traceProvider.get("mytracer")
 
-        override def flush(): CompletableResultCode =
-          CompletableResultCode.ofSuccess()
-
-        override def shutdown(): CompletableResultCode =
-          CompletableResultCode.ofSuccess()
-      }))
-      .build()
-
-    val openTelemetry = new OpenTelemetry {
-      override def getTracerProvider: TracerProvider = traceProvider
-
-      override def getPropagators: ContextPropagators =
-        io.opentelemetry.context.propagation.ContextPropagators
-          .noop() // Can add other context propagator
-    }
-    GlobalOpenTelemetry.set(openTelemetry)
-    val tracer = traceProvider.get("mytracer")
-
-    go(tracer, 1, () => go(tracer, 6))
-    go(tracer, 2)
-    go(tracer, 3)
-    go(tracer, 4)
-    go(tracer, 5)
-
-    Thread.sleep(1000)
-  }
-
-  private def printSpan(id: Int): Unit =
-    println(s"$id - ${spanInfo()}")
-
-  def spanInfo(): String = {
-    val s = Span.current()
-    val ctx = s.getSpanContext
-
-    s"${ctx.getTraceId}  ${ctx.getSpanId}  "
-  }
-
-  def go(tracer: Tracer, id: Int, body: () => Unit = () => ())(
-    implicit ec: ExecutionContext,
-  ): Unit = {
-    Future {
-      val s = tracer.spanBuilder(id.toString).setAttribute("id", id).startSpan()
-      printSpan(id)
-      s.makeCurrent()
-      printSpan(id)
-    }.map { _ =>
-        body()
-        printSpan(id)
-      }
-      .onComplete { _ =>
-        println(s"Completing $id ${spanInfo()}")
-        Span.current().end()
-      }
   }
 
 }

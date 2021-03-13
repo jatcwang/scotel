@@ -1,53 +1,53 @@
 package scotel.akkahttp
 
-import io.opentelemetry.sdk.trace.`export`.SpanExporter
-import munit.FunSuite
 import scotel.testutils.{
   setupTraceProviderWithNewThreadPool,
   InMemorySpanExporter,
 }
-import RouteWrapper.tracedRoute
+import scotel.akkahttp.RouteWrapper.tracedRoute
 import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.testkit.ScalatestRouteTest
-import org.scalatest.BeforeAndAfterEach
-import org.scalatest.wordspec.AnyWordSpec
+import akka.http.scaladsl.client.RequestBuilding._
+import example.ContextExecutionContext
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class RouteWrapperSpec
-    extends AnyWordSpec
-    with ScalatestRouteTest
-    with BeforeAndAfterEach {
+class RouteWrapperSpec extends munit.FunSuite {
 
   val spanExporter: InMemorySpanExporter = InMemorySpanExporter()
-  val (ec, tracer) = setupTraceProviderWithNewThreadPool(spanExporter)
+  val (ec, openTel) = setupTraceProviderWithNewThreadPool(spanExporter)
+  implicit val ectx: ExecutionContext = ec
 
-  "Records and finishes span for a route" in {}
-  override def afterEach(): Unit = {
-    spanExporter.reset()
-    super.afterEach()
-  }
+  val actorSystem =
+    ActorSystem("RouteWrapperSpec", defaultExecutionContext = Some(ec))
 
-  override def afterAll(): Unit = {
-    super.afterAll()
-  }
-
-  lazy val route = tracedRoute(tracer = tracer, ec = ec, actorSystem = system) {
-    import akka.http.scaladsl.server.Directives._
-
-    get {
-      path("hello" / "world") {
-        onSuccess(
-          Future { 1 + 1 },
-        )(_ => complete(StatusCodes.OK))
-      }
+  test("Records and finishes span for a route") {
+    routeFunc(Get("/hello/world")).map { resp =>
+      println(spanExporter.spans)
+      assertEquals(resp.status.intValue, 200)
     }
   }
 
-  override def createActorSystem(): ActorSystem = {
-    ActorSystem("RouteWrapperSpec", defaultExecutionContext = Some(ec))
+  override def afterEach(context: AfterEach): Unit = {
+    super.afterEach(context)
   }
+
+  override def afterAll(): Unit = {
+    actorSystem.terminate()
+    super.afterAll()
+  }
+
+  lazy val routeFunc =
+    tracedRoute(openTel, ec = ec, actorSystem = actorSystem) {
+      import akka.http.scaladsl.server.Directives._
+
+      get {
+        path("hello" / "world") {
+          onSuccess(
+            Future { 1 + 1 }(ec),
+          )(_ => complete(StatusCodes.OK))
+        }
+      }
+    }
 
 }
