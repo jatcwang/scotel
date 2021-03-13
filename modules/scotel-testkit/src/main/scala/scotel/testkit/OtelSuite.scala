@@ -1,4 +1,4 @@
-package scotel.testutils
+package scotel.testkit
 
 import io.opentelemetry.api.OpenTelemetry
 import io.opentelemetry.api.trace.Tracer
@@ -11,7 +11,7 @@ class OtelSuite extends FunSuite {
   private val ec: ResettableExecutionContext = new ResettableExecutionContext
 
   protected val spanExporter: InMemorySpanExporter = InMemorySpanExporter()
-  protected val otel: OpenTelemetry = setupTestOtel(spanExporter)
+  protected val otel: OpenTelemetry = setupOpenTelemetry(spanExporter)
   implicit protected val tracedExecutionContext: ExecutionContext = ec
   protected val tracer: Tracer = otel.getTracer("test_tracer")
 

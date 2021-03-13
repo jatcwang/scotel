@@ -1,4 +1,4 @@
-package scotel.testutils
+package scotel.testkit
 
 import example.TracedExecutionContext
 

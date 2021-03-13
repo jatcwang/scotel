@@ -1,15 +1,13 @@
-package scotel.testutils
+package scotel.testkit
 
 import io.opentelemetry.api.trace.Tracer
 import DrawSpan._
 
 import scala.concurrent.{ExecutionContext, Future}
-import FixmeSpec._
-import scotel.FutureTraceUtils.markSpan
+import FutureTraceUtilsSpec._
+import scotel.std.FutureTraceUtils.markSpan
 
-import scala.util.Random
-
-class FixmeSpec extends OtelSuite {
+class FutureTraceUtilsSpec extends OtelSuite {
 
   test(
     "fixme does not modify span context on the thread where markSpan is called",
@@ -37,7 +35,7 @@ class FixmeSpec extends OtelSuite {
 
 }
 
-object FixmeSpec {
+object FutureTraceUtilsSpec {
 
   private def mkGo(tracer: Tracer, series: Int)(
     implicit ec: ExecutionContext,

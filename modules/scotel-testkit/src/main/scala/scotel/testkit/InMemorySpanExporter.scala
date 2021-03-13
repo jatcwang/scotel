@@ -1,4 +1,4 @@
-package scotel.testutils
+package scotel.testkit
 
 import io.opentelemetry.sdk.common.CompletableResultCode
 import io.opentelemetry.sdk.trace.`export`.SpanExporter

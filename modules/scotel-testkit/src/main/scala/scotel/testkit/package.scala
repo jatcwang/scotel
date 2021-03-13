@@ -7,8 +7,8 @@ import io.opentelemetry.sdk.OpenTelemetrySdk
 import io.opentelemetry.sdk.trace.`export`.{SimpleSpanProcessor, SpanExporter}
 import io.opentelemetry.sdk.trace.SdkTracerProvider
 
-package object testutils {
-  def setupTestOtel(
+package object testkit {
+  def setupOpenTelemetry(
     spanExporter: SpanExporter,
   ): OpenTelemetry = {
     val tracerProvider = SdkTracerProvider

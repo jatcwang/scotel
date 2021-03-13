@@ -1,4 +1,4 @@
-package scotel.testutils
+package scotel.testkit
 
 import io.opentelemetry.api.trace.{SpanId, TraceId}
 import io.opentelemetry.sdk.trace.data.SpanData

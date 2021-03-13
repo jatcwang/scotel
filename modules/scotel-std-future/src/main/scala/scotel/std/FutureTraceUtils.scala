@@ -1,4 +1,4 @@
-package scotel
+package scotel.std
 
 import io.opentelemetry.api.trace.{Span, Tracer}
 
@@ -34,3 +34,4 @@ object FutureTraceUtils {
   }
 
 }
+

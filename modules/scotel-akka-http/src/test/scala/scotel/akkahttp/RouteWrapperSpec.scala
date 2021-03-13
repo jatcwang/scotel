@@ -1,6 +1,6 @@
 package scotel.akkahttp
 
-import scotel.testutils.OtelSuite
+import scotel.testkit.OtelSuite
 import scotel.akkahttp.RouteWrapper.tracedRoute
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
