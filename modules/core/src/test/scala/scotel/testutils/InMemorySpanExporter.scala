@@ -4,9 +4,8 @@ import io.opentelemetry.sdk.common.CompletableResultCode
 import io.opentelemetry.sdk.trace.`export`.SpanExporter
 import io.opentelemetry.sdk.trace.data.SpanData
 
-import scala.collection.mutable
 import java.util
-import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
+import java.util.concurrent.atomic.AtomicReference
 import scala.jdk.CollectionConverters._
 
 /**

@@ -1,37 +1,40 @@
 package scotel.testutils
 
-import io.opentelemetry.api.trace.{Span, SpanId}
+import io.opentelemetry.api.trace.{SpanId, TraceId}
 import io.opentelemetry.sdk.trace.data.SpanData
 import munit.Assertions._
 
 object DrawSpan {
 
-  final case class SpanRes(
-    data: Option[SpanData],
-    children: Vector[SpanRes],
-  )
+  def form(
+    allSpans: Vector[SpanData],
+    rootSpanId: String = SpanId.getInvalid,
+  ): Vector[SpanRes] = {
+    var lookupByParentId = allSpans.groupBy(_.getParentSpanId)
 
-  def form(allSpans: Vector[SpanData]) = {
+    def go(parentId: String): Vector[SpanRes] = {
+      val spans = lookupByParentId.getOrElse(parentId, Vector.empty)
 
-    // FIXME: error out on span with non-root parent (but parent span not found)
+      lookupByParentId = lookupByParentId - parentId
 
-    def inner(
-      parentSpanData: Option[SpanData],
-      spansToSearch: Vector[SpanData],
-    ): SpanRes = {
-      val id = parentSpanData.map(_.getSpanId).getOrElse(SpanId.getInvalid)
-      val (thisChildSpans, otherSpans) =
-        spansToSearch.partition(_.getParentSpanId == id)
-      val childSpanRes = thisChildSpans.map { s =>
-        inner(Some(s), otherSpans)
+      spans.map { s =>
+        val cc = go(s.getSpanId)
+        SpanRes(Some(s), cc)
       }
-      SpanRes(
-        parentSpanData,
-        childSpanRes,
-      )
     }
 
-    inner(None, allSpans)
+    val resultSpans = go(rootSpanId)
+      .sortBy(s => s.traceId)
+
+    val orphans = lookupByParentId.values.flatten.toVector
+
+    if (orphans.nonEmpty) {
+      fail(
+        s"There are orphan spans which aren't connected to the provided root ID ${resultSpans}",
+      )
+    } else {
+      resultSpans
+    }
   }
 
   def drawSpanDiagram(allSpanRes: Vector[SpanRes]): String = {
@@ -47,7 +50,7 @@ object DrawSpan {
         val indentSpaces = "  " * indentation
         curSpans
           .flatMap { s =>
-            Vector(s"$indentSpaces${s.data.map(_.getName).getOrElse("ROOT")}") ++ draw(
+            Vector(s"$indentSpaces${s.nameNice}") ++ draw(
               indentation + 1,
               s.children,
             )
@@ -64,7 +67,7 @@ object DrawSpan {
   ): Unit = {
     val expectedStripped = expectedDiagram.stripMargin.strip
     val rootSpanRes = form(allSpans)
-    assertEquals(drawSpanDiagram(Vector(rootSpanRes)), expectedStripped)
+    assertEquals(drawSpanDiagram(rootSpanRes), expectedStripped)
   }
 
   def getSpanWithName(

@@ -5,18 +5,17 @@ import DrawSpan._
 
 import scala.concurrent.{ExecutionContext, Future}
 import FixmeSpec._
-import scotel.FutureSpanUtils.markSpan
+import scotel.FutureTraceUtils.markSpan
 
-class FixmeSpec extends munit.FunSuite {
-  val spanExporter = InMemorySpanExporter()
-  val (ec, otel) = setupTraceProviderWithNewThreadPool(spanExporter)
+import scala.util.Random
 
-  implicit val ctx: ExecutionContext = ec
+class FixmeSpec extends OtelSuite {
 
-  val tracer = otel.getTracer("test_tracer")
+  test(
+    "fixme does not modify span context on the thread where markSpan is called",
+  ) {}
 
   test("asdf") {
-
     Future
       .sequence(
         List(
@@ -32,14 +31,8 @@ class FixmeSpec extends munit.FunSuite {
       )
       .map { _ =>
         val spanRes = form(spanExporter.spans)
-        pprint.pprintln(spanRes)
-        println(drawSpanDiagram(Vector(spanRes)))
+        println(drawSpanDiagram(spanRes))
       }
-  }
-
-  override def afterEach(context: AfterEach): Unit = {
-    super.afterEach(context)
-    spanExporter.reset()
   }
 
 }
@@ -48,17 +41,22 @@ object FixmeSpec {
 
   private def mkGo(tracer: Tracer, series: Int)(
     implicit ec: ExecutionContext,
-  ) = {
-    for {
-      _ <- markSpan(tracer, s"${series}-1", Future {
-        1
-      })
-      _ <- markSpan(tracer, s"${series}-2", Future {
-        2
-      })
-      _ <- markSpan(tracer, s"${series}-3", Future {
-        3
-      })
-    } yield ()
+  ): Future[Unit] = {
+    markSpan(
+      tracer,
+      s"p$series",
+      for {
+        _ <- markSpan(tracer, s"${series}-1", Future {
+          1
+        })
+        _ <- markSpan(tracer, s"${series}-2", Future {
+          2
+        })
+        _ <- markSpan(tracer, s"${series}-3", Future {
+          3
+        })
+      } yield (),
+    )
   }
+
 }

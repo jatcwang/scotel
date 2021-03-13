@@ -1,50 +1,43 @@
 package scotel.akkahttp
 
-import scotel.testutils.{
-  setupTraceProviderWithNewThreadPool,
-  InMemorySpanExporter,
-}
+import scotel.testutils.OtelSuite
 import scotel.akkahttp.RouteWrapper.tracedRoute
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.client.RequestBuilding._
-import example.ContextExecutionContext
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
-class RouteWrapperSpec extends munit.FunSuite {
+class RouteWrapperSpec extends OtelSuite {
 
-  val spanExporter: InMemorySpanExporter = InMemorySpanExporter()
-  val (ec, openTel) = setupTraceProviderWithNewThreadPool(spanExporter)
-  implicit val ectx: ExecutionContext = ec
+  private val actorSystem =
+    ActorSystem(
+      "RouteWrapperSpec",
+      defaultExecutionContext = Some(tracedExecutionContext),
+    )
 
-  val actorSystem =
-    ActorSystem("RouteWrapperSpec", defaultExecutionContext = Some(ec))
-
+  // FIXME: akka http tests, various error scenarios etc
   test("Records and finishes span for a route") {
     routeFunc(Get("/hello/world")).map { resp =>
-      println(spanExporter.spans)
       assertEquals(resp.status.intValue, 200)
     }
   }
 
-  override def afterEach(context: AfterEach): Unit = {
-    super.afterEach(context)
-  }
-
   override def afterAll(): Unit = {
-    actorSystem.terminate()
+    // If we shutdown the actor system here it seems to shutdown SBT as well hm
+    // But it should be fine, since the underlying thread pool is shutdown
+    // actorSystem.terminate()
     super.afterAll()
   }
 
   lazy val routeFunc =
-    tracedRoute(openTel, ec = ec, actorSystem = actorSystem) {
+    tracedRoute(otel, ec = tracedExecutionContext, actorSystem = actorSystem) {
       import akka.http.scaladsl.server.Directives._
 
       get {
         path("hello" / "world") {
           onSuccess(
-            Future { 1 + 1 }(ec),
+            Future { 1 + 1 },
           )(_ => complete(StatusCodes.OK))
         }
       }

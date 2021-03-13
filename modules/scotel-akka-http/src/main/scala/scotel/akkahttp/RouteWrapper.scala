@@ -1,38 +1,17 @@
 package scotel.akkahttp
 
-import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.javadsl.model.HttpHeader
-import akka.http.scaladsl.model.UriRendering.UriRenderer
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, UriRendering}
-import akka.http.scaladsl.server.{Route, RouteResult}
-import akka.http.scaladsl.server.Directives._
-import akka.stream.scaladsl.Flow
+import akka.http.scaladsl.model.{HttpRequest, HttpResponse}
+import akka.http.scaladsl.server.Route
 import io.opentelemetry.api.OpenTelemetry
-import io.opentelemetry.api.trace.{
-  Span,
-  SpanBuilder,
-  SpanKind,
-  StatusCode,
-  Tracer,
-}
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator
+import io.opentelemetry.api.trace.{Span, SpanKind, StatusCode}
 import io.opentelemetry.context.Context
 import io.opentelemetry.context.propagation.TextMapGetter
-import io.opentelemetry.instrumentation.api.tracer.ServerSpan
-import io.opentelemetry.javaagent.instrumentation.akkahttp.{
-  AkkaHttpServerHeaders,
-  AkkaHttpServerInstrumentationModule,
-}
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes
 
 import scala.jdk.CollectionConverters._
-import scala.jdk.CollectionConverters._
-import java.lang
-import java.util.Optional
-import java.util.stream.{Collectors, StreamSupport}
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Using}
+import scala.util.Using
 
 object RouteWrapper {
   def tracedRoute(
@@ -109,10 +88,6 @@ object RouteWrapper {
       span.setStatus(StatusCode.ERROR)
       span.end()
     }
-  }
-
-  object AkkaHttpServerHeaders {
-    val GETTER = new AkkaHttpServerHeaders
   }
 
   val httpRequestContextGetter: TextMapGetter[HttpRequest] =
