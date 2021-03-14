@@ -4,7 +4,7 @@ val akkaHttpVersion = "10.2.4"
 val munitVersion = "0.7.22"
 
 lazy val root = Project("root", file("."))
-  .aggregate(core, akkaHttp, stdFuture)
+  .aggregate(core, akkaHttp, stdFuture, testkit, catsEffect2, catsEffect3)
   .settings(commonSettings)
 
 lazy val core = Project("core", file("modules/scotel-core"))
@@ -16,11 +16,6 @@ lazy val core = Project("core", file("modules/scotel-core"))
     ),
   )
 
-lazy val stdFuture =
-  Project("scotel-std-future", file("modules/scotel-std-future"))
-    .settings(commonSettings)
-    .dependsOn(core, testkit % testOnly)
-
 lazy val testkit = Project("scotel-testkit", file("modules/scotel-testkit"))
   .dependsOn(core)
   .settings(commonSettings)
@@ -30,17 +25,31 @@ lazy val testkit = Project("scotel-testkit", file("modules/scotel-testkit"))
     ),
   )
 
-//lazy val logbackCirce = Project("logback", file("modules/logback"))
-//  .dependsOn(core)
-//  .settings(commonSettings)
-//  .settings(
-//    libraryDependencies ++= Seq(
-//      "ch.qos.logback" % "logback-classic" % "1.2.3",
-//      "io.circe" %% "circe-core" % "0.13.0",
-//    ),
-//  )
+lazy val stdFuture =
+  Project("scotel-std-future", file("modules/scotel-std-future"))
+    .settings(commonSettings)
+    .dependsOn(core, testkit % testOnly)
 
-// FIXME: rename
+lazy val catsEffect2 =
+  Project("scotel-cats-effect-2", file("modules/scotel-cats-effect-2"))
+    .dependsOn(core, testkit % testOnly)
+    .settings(commonSettings)
+    .settings(
+      libraryDependencies ++= Seq(
+        "org.typelevel" %% "cats-effect" % "2.3.3",
+      ),
+    )
+
+lazy val catsEffect3 =
+  Project("scotel-cats-effect-3", file("modules/scotel-cats-effect-3"))
+    .dependsOn(core, testkit % testOnly)
+    .settings(commonSettings)
+    .settings(
+      libraryDependencies ++= Seq(
+        "org.typelevel" %% "cats-effect" % "3.0.0-RC2",
+      ),
+    )
+
 lazy val akkaHttp =
   Project("scotel-akka-http", file("modules/scotel-akka-http"))
     .dependsOn(core, testkit % testOnly)

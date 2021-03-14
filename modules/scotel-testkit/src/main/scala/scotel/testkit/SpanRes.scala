@@ -1,5 +1,6 @@
 package scotel.testkit
 
+import io.opentelemetry.api.common.AttributeKey
 import io.opentelemetry.sdk.trace.data.SpanData
 import io.opentelemetry.api.trace.{SpanId, TraceId}
 
@@ -9,7 +10,7 @@ final case class SpanRes(
 ) {
   def nameNice: String = data match {
     case Some(d) => d.getName
-    case None    => "ROOT"
+    case None    => "none"
   }
 
   def traceId: String = data match {
@@ -23,5 +24,11 @@ final case class SpanRes(
   def parentSpanId: String = data match {
     case Some(d) => d.getParentSpanId
     case None    => SpanId.getInvalid
+  }
+  def getStrAttribute(key: String): Option[String] = {
+    data match {
+      case Some(d) => Option(d.getAttributes.get(AttributeKey.stringKey(key)))
+      case None    => Some("NOSPANDATA")
+    }
   }
 }

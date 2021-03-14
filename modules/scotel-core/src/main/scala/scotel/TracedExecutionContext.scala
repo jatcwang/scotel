@@ -1,4 +1,4 @@
-package example
+package scotel
 
 import io.opentelemetry.context.Context
 
@@ -14,4 +14,9 @@ class TracedExecutionContext(private val underlying: ExecutionContext)
 
   override def reportFailure(cause: Throwable): Unit =
     underlying.reportFailure(cause)
+}
+
+object TracedExecutionContext {
+  def apply(ec: ExecutionContext): TracedExecutionContext =
+    new TracedExecutionContext(ec)
 }

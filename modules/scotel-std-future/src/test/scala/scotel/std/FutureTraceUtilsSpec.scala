@@ -28,7 +28,7 @@ class FutureTraceUtilsSpec extends OtelSuite {
         ),
       )
       .map { _ =>
-        val spanRes = form(spanExporter.spans)
+        val spanRes = mkSpanGraph(spanExporter.spans)
         println(drawSpanDiagram(spanRes))
       }
   }

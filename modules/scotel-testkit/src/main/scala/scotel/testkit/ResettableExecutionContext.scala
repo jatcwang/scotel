@@ -1,6 +1,6 @@
 package scotel.testkit
 
-import example.TracedExecutionContext
+import scotel.TracedExecutionContext
 
 import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
