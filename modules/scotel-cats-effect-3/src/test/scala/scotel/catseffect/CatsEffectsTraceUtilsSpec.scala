@@ -109,7 +109,25 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
 
   test(
     "Fiber cancellation adds a 'fiber_cancelled' span event and ends the span",
-  ) {}
+  ) {
+    withSpan(tracer, "base", _.setAttribute("traceName", s"base"))(
+      for {
+        fiber <- withSpan(tracer, "1")(IO.never).start
+        _ <- withSpan(tracer, "2")(IO.unit)
+        _ <- fiber.cancel
+      } yield (),
+    ).map { _ =>
+      assertSpanDiagram(
+        spanExporter.spans,
+        """
+          |base [t:base]
+          |  1 (fiber_cancelled)
+          |  2
+          |""".stripMargin,
+      )
+    }
+
+  }
 
   test(
     "Span does not get lost if execution passes through a non-propagating ExecutionContext",

@@ -68,7 +68,11 @@ object DrawSpan {
     }
   }
 
-  val defaultEventShows: List[EventShow] = List(errorEventShow)
+  val fiberCancelled: EventShow = ev => {
+    if (ev.getName == "fiber_cancelled") Some("fiber_cancelled") else None
+  }
+
+  val defaultEventShows: List[EventShow] = List(errorEventShow, fiberCancelled)
 
   /**
     * Extract some message from a span event

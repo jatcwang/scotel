@@ -34,8 +34,8 @@ object CatsEffectTraceUtils {
           F.guaranteeCase(io) { outcome =>
             outcome.fold(
               canceled = F.delay {
-                span.end()
                 span.addEvent("fiber_cancelled")
+                span.end()
                 scope.close()
               },
               errored = e =>
