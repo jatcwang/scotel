@@ -13,25 +13,24 @@ object FutureTraceUtils {
       val span = tracer
         .spanBuilder(opName)
         .startSpan()
-      span.makeCurrent()
-    }.flatMap(scope =>
-      f.transform(
-        { a =>
-          Span.current().end()
-          scope.close()
-          a
-        },
-        e => {
-          val span = Span.current()
-          span.recordException(e)
-          span.end()
-          scope.close()
-          e
-        },
-      ),
-    )(ExecutionContext.parasitic)
+      (span, span.makeCurrent())
+    }.flatMap {
+      case (span, scope) =>
+        f.transform(
+          { a =>
+            span.end()
+            scope.close()
+            a
+          },
+          e => {
+            span.recordException(e)
+            span.end()
+            scope.close()
+            e
+          },
+        )
+    }(ExecutionContext.parasitic)
 
   }
 
 }
-

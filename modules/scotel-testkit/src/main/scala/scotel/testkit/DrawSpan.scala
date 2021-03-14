@@ -2,13 +2,14 @@ package scotel.testkit
 
 import io.opentelemetry.api.common.{AttributeKey, Attributes}
 import io.opentelemetry.api.trace.{Span, SpanId, TraceId}
-import io.opentelemetry.sdk.trace.data.SpanData
+import io.opentelemetry.sdk.trace.data.{EventData, SpanData}
 import io.opentelemetry.semconv.trace.attributes.SemanticAttributes
 import munit.Assertions._
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
+import scala.util.chaining.scalaUtilChainingOps
 
 object DrawSpan {
 
@@ -57,35 +58,28 @@ object DrawSpan {
       Option(attrs.get(AttributeKey.stringKey(key)))
   }
 
-  val resolveSpanErrorMsg: SpanRes => List[String] = s => {
-    s.data.toList
-      .flatMap(
-        _.getEvents.asScala
-          .filter(ev => ev.getName == SemanticAttributes.EXCEPTION_EVENT_NAME),
-      )
-      .flatMap(ev =>
-        ev.getAttributes
-          .getStrAttribute(SemanticAttributes.EXCEPTION_MESSAGE.getKey),
-      )
-      .map(msg => s"err:$msg")
+  val errorEventShow: EventShow = ev => {
+    if (ev.getName == SemanticAttributes.EXCEPTION_EVENT_NAME) {
+      ev.getAttributes
+        .getStrAttribute(SemanticAttributes.EXCEPTION_MESSAGE.getKey)
+        .map(msg => s"err:$msg")
+    } else {
+      None
+    }
   }
 
-  val defaultSpanPrinters: SpanRes => List[String] = s => {
-    List(
-      resolveSpanErrorMsg,
-    ).flatMap(_.apply(s))
-  }
+  val defaultEventShows: List[EventShow] = List(errorEventShow)
 
   /**
-    * Extract some message from a span
+    * Extract some message from a span event
     */
-  trait SpanMsgExtractor {
-    def getMsg(span: SpanRes): List[String]
+  trait EventShow {
+    def getMsg(ev: EventData): Option[String]
   }
 
   def drawSpanDiagram(
     allSpanRes: Vector[SpanRes],
-    extraPrint: SpanRes => List[String] = defaultSpanPrinters,
+    eventShows: List[EventShow] = defaultEventShows,
   ): String = {
     def draw(
       indentation: Int,
@@ -97,31 +91,38 @@ object DrawSpan {
         val indentSpaces = "  " * indentation
         spanRes
           .flatMap { s =>
-            val extras = {
-              val traceIdStr = if (indentation == 0) {
-                val traceId = s.traceId
-                if (traceId == TraceId.getInvalid) {
-                  "t:none"
-                } else {
-                  traceNameLookup.get(traceId) match {
-                    case Some(traceName) => traceName
-                    case None => {
-                      val traceNameFromAttr = s.getStrAttribute("traceName")
-                      val traceName = traceNameFromAttr.getOrElse(
-                        s"no_trace_name_set",
-                      )
-                      traceNameLookup += (traceId -> traceName)
-                      s"t:${traceName}"
-                    }
+            val traceIdStr = if (indentation == 0) {
+              val traceId = s.traceId
+              if (traceId == TraceId.getInvalid) {
+                " [t:none]"
+              } else {
+                traceNameLookup.get(traceId) match {
+                  case Some(traceName) => traceName
+                  case None => {
+                    val traceNameFromAttr = s.getStrAttribute("traceName")
+                    val traceName = traceNameFromAttr.getOrElse(
+                      s"no_trace_name_set",
+                    )
+                    traceNameLookup += (traceId -> traceName)
+                    s" [t:$traceName]"
                   }
                 }
-              } else ""
+              }
+            } else ""
 
-              val all =
-                (traceIdStr +: extraPrint(s)).filter(_.nonEmpty).mkString(",")
-              if (all.nonEmpty) s"[$all]" else ""
-            }
-            Vector(s"$indentSpaces${s.nameNice} ${extras}") ++ draw(
+            val eventDataStr = s.data.toList
+              .flatMap(_.getEvents.asScala)
+              .sortBy(_.getEpochNanos)
+              .flatMap { ev =>
+                eventShows.flatMap(_.getMsg(ev))
+              }
+              .pipe(strs =>
+                if (strs.nonEmpty) {
+                  s" (${strs.mkString(",")})"
+                } else "",
+              )
+
+            Vector(s"$indentSpaces${s.nameNice}$traceIdStr$eventDataStr") ++ draw(
               indentation + 1,
               s.children,
             )

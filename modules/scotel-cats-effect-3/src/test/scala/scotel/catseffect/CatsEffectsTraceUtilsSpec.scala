@@ -1,17 +1,23 @@
 package scotel.catseffect
 
 import cats.effect.IO
-import cats.effect.unsafe.{IORuntime, Scheduler}
+import cats.effect.unsafe.IORuntime
 import scotel.testkit.OtelSuite
 import scotel.catseffect.CatsEffectTraceUtils._
 import cats.implicits._
 import scotel.testkit.DrawSpan._
+
+import java.util.concurrent.Executors
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.concurrent.duration._
 
 // FIXME: need to wrap Scheduler (timer) & document it..
 class CatsEffectsTraceUtilsSpec extends OtelSuite {
 
   implicit val ioRuntime: IORuntime = createDefaultTracedIORuntime
+
+  private val nonTracedEC: ExecutionContextExecutorService =
+    ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(4))
 
   private val munitIOTransform: ValueTransform =
     new ValueTransform(
@@ -21,7 +27,7 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
 
   // FIXME: generator
   test(
-    "Fibers running in parallel should no contaiminate each other's span context",
+    "Fibers running in parallel should not contaminate each other's span context",
   ) {
     (1.to(6))
       .toList
@@ -59,7 +65,7 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
       }
   }
 
-  test("Exceptiosn thrown in IOs are recorded") {
+  test("Exception thrown in IOs are recorded") {
     val io = withSpan(tracer, "base", _.setAttribute("traceName", "base"))(
       for {
         _ <- withSpan(tracer, "no_error")(
@@ -92,11 +98,48 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
         """
           |base [t:base]
           |  no_error
-          |  span_err_1 [err:e1]
-          |  span_err_2 [err:e2]
-          |  span_err_outer [err:e3]
-          |    span_err_3 [err:e3]
+          |  span_err_1 (err:e1)
+          |  span_err_2 (err:e2)
+          |  span_err_outer (err:e3)
+          |    span_err_3 (err:e3)
           """,
+      )
+    }
+  }
+
+  test(
+    "Fiber cancellation adds a 'fiber_cancelled' span event and ends the span",
+  ) {}
+
+  test(
+    "Span does not get lost if execution passes through a non-propagating ExecutionContext",
+  ) {
+    withSpan(tracer, "base", _.setAttribute("traceName", s"base"))(
+      for {
+        _ <- withSpan(tracer, "1")(for {
+          _ <- IO.sleep(0.millis)
+          _ <- IO(()).evalOn(nonTracedEC)
+          _ <- withSpan(tracer, "lost_span") {
+            IO(())
+          }
+        } yield ())
+        _ <- withSpan(tracer, "2")(for {
+          _ <- IO.sleep(0.millis)
+          _ <- withSpan(tracer, "yay") {
+            IO(())
+          }
+        } yield ())
+      } yield (),
+    ).map { _ =>
+      assertSpanDiagram(
+        spanExporter.spans,
+        """
+          |base [t:base]
+          |  1
+          |  2
+          |    yay
+          |lost_span [t:no_trace_name_set]
+          |""".stripMargin,
       )
     }
   }
@@ -115,5 +158,10 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
 
   override def munitValueTransforms: List[ValueTransform] =
     super.munitValueTransforms ++ List(munitIOTransform)
+
+  override def afterAll(): Unit = {
+    nonTracedEC.shutdownNow()
+    super.afterAll()
+  }
 
 }

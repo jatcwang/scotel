@@ -5,6 +5,7 @@ import cats.effect.{ExitCase, Sync}
 
 object CatsEffectTraceUtils {
 
+  // FIXME: rename
   // FIXME: test cancel and error
   def withSpanName[F[_], A](tracer: Tracer, name: String)(io: F[A])(
     implicit F: Sync[F],
@@ -14,30 +15,29 @@ object CatsEffectTraceUtils {
         val span = tracer
           .spanBuilder(name)
           .startSpan()
-        span.makeCurrent()
+        (span, span.makeCurrent())
       },
-    ) { scope =>
-      F.guaranteeCase(io) {
-        case ExitCase.Completed =>
-          F.delay {
-            Span.current().end()
-            scope.close()
-          }
-        case ExitCase.Error(e) =>
-          F.delay {
-            val span = Span.current()
-            span.recordException(e)
-            span.end()
-            scope.close()
-          }
-        case ExitCase.Canceled =>
-          F.delay {
-            val span = Span.current()
-            span.addEvent("cancelled")
-            span.end()
-            scope.close()
-          }
-      }
+    ) {
+      case (span, scope) =>
+        F.guaranteeCase(io) {
+          case ExitCase.Completed =>
+            F.delay {
+              span.end()
+              scope.close()
+            }
+          case ExitCase.Error(e) =>
+            F.delay {
+              span.recordException(e)
+              span.end()
+              scope.close()
+            }
+          case ExitCase.Canceled =>
+            F.delay {
+              span.addEvent("fiber_cancelled")
+              span.end()
+              scope.close()
+            }
+        }
     }
   }
 

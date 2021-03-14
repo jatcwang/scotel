@@ -21,33 +21,38 @@ object CatsEffectTraceUtils {
           tracer
             .spanBuilder(name),
         ).startSpan()
-        span.makeCurrent()
+        (span, span.makeCurrent())
       }
-      .flatMap { scope =>
-        // Note: scope.close() will set current context to the parent span context into
-        // Parent span context was captured when span.makeCurrent() was called
-        F.guaranteeCase(io) { outcome =>
-          outcome.fold(
-            canceled = F.delay {
-              Span.current().end()
-              scope.close()
-            },
-            errored = e =>
-              F.delay {
-                val span = Span.current()
-                span.recordException(e)
+      .flatMap {
+        case (span, scope) =>
+          // We explicitly pass the span through (instead of calling Span.current())
+          // to protect against any broken context propagation in `io` (e.g. execution may have
+          // passed through an EC doesn't propagate context)
+          // scope.close() will set current context to the parent span context,
+          // that was captured when span.makeCurrent() was called, so any fibers that continue from here
+          // will be siblings of this span, instead of a child.
+          F.guaranteeCase(io) { outcome =>
+            outcome.fold(
+              canceled = F.delay {
                 span.end()
+                span.addEvent("fiber_cancelled")
                 scope.close()
               },
-            completed = next =>
-              F.delay {
-                  Span.current().end()
+              errored = e =>
+                F.delay {
+                  span.recordException(e)
+                  span.end()
                   scope.close()
-                }
-                .flatMap(_ => next)
-                .void,
-          )
-        }
+                },
+              completed = next =>
+                F.delay {
+                    span.end()
+                    scope.close()
+                  }
+                  .flatMap(_ => next)
+                  .void,
+            )
+          }
       }
   }
 
