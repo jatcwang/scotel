@@ -34,11 +34,11 @@ class CatsEffect2TraceUtilsSpec extends OtelSuite {
   }
 
   private def go(i: Int): IO[Unit] = {
-    withSpanName(tracer, s"${i}")(for {
-      _ <- withSpanName(tracer, s"$i-1")(IO.shift)
+    withSpan(tracer, s"${i}")(for {
+      _ <- withSpan(tracer, s"$i-1")(IO.shift)
       _ <- IO.shift
-      _ <- withSpanName(tracer, s"$i-2")(IO.unit)
-      _ <- withSpanName(tracer, s"$i-3")(IO.shift)
+      _ <- withSpan(tracer, s"$i-2")(IO.unit)
+      _ <- withSpan(tracer, s"$i-3")(IO.shift)
     } yield ())
   }
 

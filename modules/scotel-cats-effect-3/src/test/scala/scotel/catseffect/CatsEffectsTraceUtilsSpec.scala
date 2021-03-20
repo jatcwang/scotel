@@ -11,7 +11,6 @@ import java.util.concurrent.Executors
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutorService}
 import scala.concurrent.duration._
 
-// FIXME: need to wrap Scheduler (timer) & document it..
 class CatsEffectsTraceUtilsSpec extends OtelSuite {
 
   implicit val ioRuntime: IORuntime = createDefaultTracedIORuntime
@@ -66,23 +65,15 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
   }
 
   test("Exception thrown in IOs are recorded") {
-    val io = withSpan(tracer, "base", _.setAttribute("traceName", "base"))(
+    val io = withSpan("base", _.setAttribute("traceName", "base"))(
       for {
-        _ <- withSpan(tracer, "no_error")(
-          IO(1),
-        )
-        _ <- withSpan(tracer, "span_err_1")(IO {
-          throw new Exception("e1")
-        }).attempt
-        _ <- withSpan(tracer, "span_err_2")(
-          IO.raiseError(
-            new Exception("e2"),
-          ),
-        ).attempt
-        _ <- withSpan(tracer, "span_err_outer")(
+        _ <- withSpan("no_error")(IO(1))
+        _ <- withSpan("span_err_1")(IO { throw new Exception("e1") }).attempt
+        _ <- withSpan("span_err_2")(IO.raiseError(new Exception("e2"))).attempt
+        _ <- withSpan("span_err_outer")(
           for {
             _ <- IO.unit
-            _ <- withSpan(tracer, "span_err_3") {
+            _ <- withSpan("span_err_3") {
               IO.raiseError(
                 new Exception("e3"),
               )
@@ -110,10 +101,10 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
   test(
     "Fiber cancellation adds a 'fiber_cancelled' span event and ends the span",
   ) {
-    withSpan(tracer, "base", _.setAttribute("traceName", s"base"))(
+    withSpan("base", _.setAttribute("traceName", s"base"))(
       for {
-        fiber <- withSpan(tracer, "1")(IO.never).start
-        _ <- withSpan(tracer, "2")(IO.unit)
+        fiber <- withSpan("1")(IO.never).start
+        _ <- withSpan("2")(IO.unit)
         _ <- fiber.cancel
       } yield (),
     ).map { _ =>
@@ -132,18 +123,18 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
   test(
     "Span does not get lost if execution passes through a non-propagating ExecutionContext",
   ) {
-    withSpan(tracer, "base", _.setAttribute("traceName", s"base"))(
+    withSpan("base", _.setAttribute("traceName", s"base"))(
       for {
-        _ <- withSpan(tracer, "1")(for {
+        _ <- withSpan("1")(for {
           _ <- IO.sleep(0.millis)
           _ <- IO(()).evalOn(nonTracedEC)
-          _ <- withSpan(tracer, "lost_span") {
+          _ <- withSpan("lost_span") {
             IO(())
           }
         } yield ())
-        _ <- withSpan(tracer, "2")(for {
+        _ <- withSpan("2")(for {
           _ <- IO.sleep(0.millis)
-          _ <- withSpan(tracer, "yay") {
+          _ <- withSpan("yay") {
             IO(())
           }
         } yield ())
@@ -164,13 +155,13 @@ class CatsEffectsTraceUtilsSpec extends OtelSuite {
 
   private def go(i: Int): IO[Unit] = {
     val sleep = IO.sleep(1.millis)
-    withSpan(tracer, s"$i", _.setAttribute("traceName", s"$i"))(for {
-      _ <- withSpan(tracer, s"$i-1")(sleep)
+    withSpan(s"$i", _.setAttribute("traceName", s"$i"))(for {
+      _ <- withSpan(s"$i-1")(sleep)
       _ <- sleep
       _ <- IO.blocking(())
-      _ <- withSpan(tracer, s"$i-2")(sleep)
+      _ <- withSpan(s"$i-2")(sleep)
       _ <- IO.blocking(())
-      _ <- withSpan(tracer, s"$i-3")(sleep)
+      _ <- withSpan(s"$i-3")(sleep)
     } yield ())
   }
 

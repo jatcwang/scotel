@@ -13,7 +13,7 @@ class OtelSuite extends FunSuite {
   protected val spanExporter: InMemorySpanExporter = InMemorySpanExporter()
   protected val otel: OpenTelemetry = setupOpenTelemetry(spanExporter)
   implicit protected val tracedExecutionContext: ExecutionContext = ec
-  protected val tracer: Tracer = otel.getTracer("test_tracer")
+  implicit protected val tracer: Tracer = otel.getTracer("test_tracer")
 
   override def afterEach(context: AfterEach): Unit = {
     val _ = context

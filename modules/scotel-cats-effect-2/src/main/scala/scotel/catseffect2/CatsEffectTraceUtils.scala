@@ -7,7 +7,7 @@ object CatsEffectTraceUtils {
 
   // FIXME: rename
   // FIXME: test cancel and error
-  def withSpanName[F[_], A](tracer: Tracer, name: String)(io: F[A])(
+  def withSpan[F[_], A](tracer: Tracer, name: String)(io: F[A])(
     implicit F: Sync[F],
   ): F[A] = {
     F.flatMap(

@@ -10,11 +10,11 @@ object CatsEffectTraceUtils {
   // FIXME: take implicit tracer
   // FIXME: test cancel and error
   def withSpan[F[_], A](
-    tracer: Tracer,
     name: String,
     buildSpan: SpanBuilder => SpanBuilder = identity,
   )(io: F[A])(
     implicit F: Sync[F],
+    tracer: Tracer,
   ): F[A] = {
     F.delay {
         val span = buildSpan(
